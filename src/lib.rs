@@ -14,7 +14,7 @@
 
 // #Ulin Project 2026
 
-
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![no_std]
 
 pub mod access;
