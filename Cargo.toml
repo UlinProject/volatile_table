@@ -2,8 +2,12 @@
 name = "volatile_table"
 version = "0.0.1"
 edition = "2024"
+description = "A zero-cost, type-safe DSL for MMIO and volatile register mapping with compile-time access control (RO/RW/WO)."
 authors = ["Denis Kotlyarov (Денис Котляров) <denis2005991@gmail.com>"]
 repository = "https://github.com/UlinProject/volatile_table.git"
+homepage = "https://github.com/UlinProject/volatile_table.git"
+categories = ["embedded", "no-std", "hardware-support"]
+keywords = ["volatile", "mmio", "register", "mapping", "no_std"]
 
 license = "Apache-2.0"
 readme = "README.md"
