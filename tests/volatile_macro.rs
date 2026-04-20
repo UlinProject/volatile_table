@@ -1,5 +1,4 @@
 
-#[cfg(test)]
 #[test]
 fn test_volatile_macro() {
     use volatile_table::volatile;

@@ -94,19 +94,21 @@ macro_rules! volatile_type {
 ///
 /// ```rust
 /// use volatile_table::volatile;
+/// 
+/// static mut SOME_VAR: usize = 0;
 ///
 /// // 1. Default (Read-Write, usize, from raw pointer)
 /// let p = volatile!(&raw mut SOME_VAR);
 ///
 /// // 2. Custom Type and Access (Read-Only, u32)
-/// let p = volatile!(ro <u32> : &raw mut SOME_VAR);
+/// let p = volatile!(ro <usize> : &raw mut SOME_VAR);
 ///
 /// // 3. From a literal address (common in embedded)
 /// // This uses the @from_usize flag
 /// let p = volatile!(@from_usize rw <u32> : 0x4000_1000);
 ///
 /// // 4. Shorthand for typed RW
-/// let p = volatile!(<u8> : &raw mut SOME_VAR);
+/// let p = volatile!(<usize> : &raw mut SOME_VAR);
 /// ```
 ///
 /// # Internal flags:
@@ -120,7 +122,7 @@ macro_rules! volatile {
     [ $(@from_usize)? @ignore_from_usize $tt:ident : $($a:tt)+ ] => {
         <$crate::volatile_type!($tt)>::from_ptr($($a)*)
     };
-    [ $(@from_usize)? @ignore_from_usize $ty:ty : $($a:tt)+ ] => {
+    [ $(@from_usize)? @ignore_from_usize <$ty:ty> : $($a:tt)+ ] => {
         <$crate::volatile_type!(<$ty>)>::from_ptr($($a)*)
     };
     [ $(@from_usize)? @ignore_from_usize $($a:tt)+ ] => {
@@ -148,7 +150,7 @@ macro_rules! volatile {
     [ $tt:ident : $($a:tt)+ ] => {
         <$crate::volatile_type!($tt)>::from_ptr($($a)*)
     };
-    [ $ty:ty : $($a:tt)+ ] => {
+    [ <$ty:ty> : $($a:tt)+ ] => {
         <$crate::volatile_type!(<$ty>)>::from_ptr($($a)*)
     };
     [ $($a:tt)+ ] => {
@@ -178,16 +180,18 @@ macro_rules! volatile {
 ///
 /// ### Simple Register Definition
 /// ```rust
+/// use volatile_table::volatile_table;
 /// volatile_table! {
 ///     /// System clock control
 ///     pub rw <u32> CLK_CTRL = 0x4000_0000;
 ///     /// Status register (read-only)
-///     ro STATUS = 0x4000_0004; 
+///     ro <u32> STATUS = 0x4000_0004; 
 /// }
 /// ```
 ///
 /// ### Advanced Memory Map (e.g., UART Driver)
 /// ```rust
+/// use volatile_table::volatile_table;
 /// volatile_table! {
 ///     map [pub rw <u32> UART_BASE = 0xC810_04C0]: {
 ///         wo <u32> TX_FIFO += 0x00;
