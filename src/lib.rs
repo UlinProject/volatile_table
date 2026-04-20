@@ -20,6 +20,32 @@
 pub mod access;
 pub mod ptr;
 
+/// A helper macro to resolve volatile pointer types and access rights.
+///
+/// This macro maps shorthand syntax (like `rw`, `ro`, `wo`) and data types 
+/// to the underlying [`VolatilePtr`] implementation. It is the core engine 
+/// behind the type generation in `volatile_table!`.
+///
+/// # Syntax Patterns:
+///
+/// - `[ <$t:ty> ]`       => Read-Write pointer to type `$t`.
+/// - `[ rw <$t:ty> ]`    => Read-Write pointer to type `$t`.
+/// - `[ ro <$t:ty> ]`    => Read-Only pointer to type `$t`.
+/// - `[ wo <$t:ty> ]`    => Write-Only pointer to type `$t`.
+/// - `[ rw ]`, `[ ro ]`, `[ wo ]` => Access-specific pointer to `usize` (default).
+/// - `[]`                => Defaults to `rw <usize>`.
+///
+/// # Examples
+///
+/// ```rust
+/// use volatile_table::volatile_type;
+///
+/// // Resolves to VolatilePtr<RW, u32>
+/// type ControlReg = volatile_type![rw <u32>];
+///
+/// // Resolves to VolatilePtr<RO, usize>
+/// type StatusReg = volatile_type![ro];
+/// ```
 #[macro_export]
 macro_rules! volatile_type {
     [ <$t: ty> ] => {
@@ -52,6 +78,40 @@ macro_rules! volatile_type {
     };
 }
 
+/// A universal constructor macro for creating volatile pointers.
+///
+/// This macro provides a flexible DSL for instantiating [`VolatilePtr`] from raw pointers 
+/// or memory addresses (as `usize`). It handles access rights and type casting automatically.
+///
+/// # Syntax Variations:
+///
+/// 1. **Address-based (from_usize)**: Starts with `@from_usize`.
+/// 2. **Pointer-based (default)**: Uses `from_ptr` internally.
+/// 3. **Typed**: Use `<T>` to specify the data type.
+/// 4. **Access-controlled**: Use `rw`, `ro`, or `wo` to set permissions.
+///
+/// # Patterns & Examples:
+///
+/// ```rust
+/// use volatile_table::volatile;
+///
+/// // 1. Default (Read-Write, usize, from raw pointer)
+/// let p = volatile!(&raw mut SOME_VAR);
+///
+/// // 2. Custom Type and Access (Read-Only, u32)
+/// let p = volatile!(ro <u32> : &raw mut SOME_VAR);
+///
+/// // 3. From a literal address (common in embedded)
+/// // This uses the @from_usize flag
+/// let p = volatile!(@from_usize rw <u32> : 0x4000_1000);
+///
+/// // 4. Shorthand for typed RW
+/// let p = volatile!(<u8> : &raw mut SOME_VAR);
+/// ```
+///
+/// # Internal flags:
+/// - `@from_usize`: Forces the use of usize as a pointer
+/// - `@ignore_from_usize`: Flag that excludes the previous `@from_usize` flag; (used internally only.)
 #[macro_export]
 macro_rules! volatile {
     [ $(@from_usize)? @ignore_from_usize $access:ident <$ty:ty> : $($a:tt)+ ] => {
@@ -96,6 +156,52 @@ macro_rules! volatile {
     };
 }
 
+/// The main macro for defining volatile register tables and memory maps.
+///
+/// `volatile_table!` allows you to declare memory-mapped registers as typed constants
+/// and create logical groups (maps) with relative offsets.
+///
+/// # Syntax Patterns
+///
+/// 1. **Direct Declaration**: `access <type> NAME = address;`
+///    - Declares a `const` volatile pointer.
+///    - If `<type>` is omitted, it defaults to `usize`.
+///    - Addresses are automatically handled as `usize` via `@from_usize` logic.
+///
+/// 2. **Memory Mapping**: `map [BASE_REG]: { OFFSET_REGS }`
+///    - Defines a set of registers relative to a base address.
+///    - Automatically calculates addresses using the `+=` syntax inside the block.
+///
+/// 3. **Metadata & Visibility**: Supports doc comments `///` and visibility modifiers (e.g., `pub`).
+///
+/// # Examples
+///
+/// ### Simple Register Definition
+/// ```rust
+/// volatile_table! {
+///     /// System clock control
+///     pub rw <u32> CLK_CTRL = 0x4000_0000;
+///     /// Status register (read-only)
+///     ro STATUS = 0x4000_0004; 
+/// }
+/// ```
+///
+/// ### Advanced Memory Map (e.g., UART Driver)
+/// ```rust
+/// volatile_table! {
+///     map [pub rw <u32> UART_BASE = 0xC810_04C0]: {
+///         wo <u32> TX_FIFO += 0x00;
+///         ro <u32> RX_FIFO += 0x04;
+///         rw <u32> CONTROL += 0x08;
+///     }
+/// }
+/// ```
+///
+/// # How it works
+/// - For entries with `<type>`, the macro assumes the initialization value is a memory address (`usize`).
+/// - For entries without `<type>`, it treats the value as a pointer expression unless flagged.
+/// - The `map` block expands into a series of constant definitions where each child register 
+///   is calculated as `BASE_ADDR + OFFSET`.
 #[macro_export]
 macro_rules! volatile_table {
     [
@@ -201,6 +307,12 @@ macro_rules! volatile_table {
     [ ] => [];
 }
 
+/// **Internal use only.** 
+///
+/// This macro handles the expansion of the `map` block within [`volatile_table!`].
+/// It recursively processes register definitions and calculates their absolute 
+/// addresses based on a base pointer using byte offsets.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! _volatile_map {
     [
