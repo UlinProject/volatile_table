@@ -1,11 +1,11 @@
 //! Access control markers for volatile pointers.
 //!
-//! This module defines markers ([`RO`], [`RW`], [`WO`]) used to specify 
-//! the capabilities of a [`VolatilePtr`]. These markers are zero-sized 
+//! This module defines markers ([`RO`], [`RW`], [`WO`]) used to specify
+//! the capabilities of a [`VolatilePtr`]. These markers are zero-sized
 //! and exist only to enforce access rules at compile time.
 
-use core::fmt::Debug;
 use cluFullTransmute::transmute_unchecked;
+use core::fmt::Debug;
 
 /// A trait that defines how a specific access marker relates to raw pointers.
 pub trait VolatilePtrAccess<T>: Debug + Clone + Copy + PartialEq + PartialOrd + Eq + Ord {
@@ -19,8 +19,8 @@ pub trait VolatilePtrAccess<T>: Debug + Clone + Copy + PartialEq + PartialOrd + 
 }
 
 /// **Read-Only** access marker.
-/// 
-/// Pointers with this marker only allow `.read()` operations. 
+///
+/// Pointers with this marker only allow `.read()` operations.
 /// Maps to `*const T`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RO {}
@@ -40,7 +40,7 @@ impl<T> VolatilePtrAccess<T> for RO {
 }
 
 /// **Read-Write** access marker.
-/// 
+///
 /// Pointers with this marker allow both `.read()` and `.write()` operations.
 /// Maps to `*mut T`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -61,7 +61,7 @@ impl<T> VolatilePtrAccess<T> for RW {
 }
 
 /// **Write-Only** access marker.
-/// 
+///
 /// Pointers with this marker only allow `.write()` operations.
 /// Maps to `*mut T`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -82,9 +82,9 @@ impl<T> VolatilePtrAccess<T> for WO {
 }
 
 /// Forcefully converts a raw pointer type to its address representation.
-/// 
+///
 /// # Safety
-/// This is used internally to perform address arithmetic. It relies on the fact 
+/// This is used internally to perform address arithmetic. It relies on the fact
 /// that `*const T` and `*mut T` have the same layout as `usize`.
 pub(crate) const unsafe fn into_usize_unchecked<A: VolatilePtrAccess<T>, T>(v: A::TPtr) -> usize {
     unsafe { transmute_unchecked(v) }

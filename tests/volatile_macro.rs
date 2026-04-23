@@ -1,10 +1,9 @@
-
 #[test]
 fn test_volatile_macro() {
     use volatile_table::volatile;
-    
+
     let mut v = 10usize;
-    let addr = &mut v as *mut _ as *mut usize;
+    let addr = &mut v as *mut _;
 
     unsafe {
         // rw
@@ -33,4 +32,3 @@ fn test_volatile_macro() {
         assert_eq!(volatile_ptr.read(), 3);
     }
 }
-

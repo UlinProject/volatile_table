@@ -22,8 +22,8 @@ pub mod ptr;
 
 /// A helper macro to resolve volatile pointer types and access rights.
 ///
-/// This macro maps shorthand syntax (like `rw`, `ro`, `wo`) and data types 
-/// to the underlying [`VolatilePtr`] implementation. It is the core engine 
+/// This macro maps shorthand syntax (like `rw`, `ro`, `wo`) and data types
+/// to the underlying [`VolatilePtr`] implementation. It is the core engine
 /// behind the type generation in `volatile_table!`.
 ///
 /// # Syntax Patterns:
@@ -80,7 +80,7 @@ macro_rules! volatile_type {
 
 /// A universal constructor macro for creating volatile pointers.
 ///
-/// This macro provides a flexible DSL for instantiating [`VolatilePtr`] from raw pointers 
+/// This macro provides a flexible DSL for instantiating [`VolatilePtr`] from raw pointers
 /// or memory addresses (as `usize`). It handles access rights and type casting automatically.
 ///
 /// # Syntax Variations:
@@ -94,7 +94,7 @@ macro_rules! volatile_type {
 ///
 /// ```rust
 /// use volatile_table::volatile;
-/// 
+///
 /// static mut SOME_VAR: usize = 0;
 ///
 /// // 1. Default (Read-Write, usize, from raw pointer)
@@ -185,7 +185,7 @@ macro_rules! volatile {
 ///     /// System clock control
 ///     pub rw <u32> CLK_CTRL = 0x4000_0000;
 ///     /// Status register (read-only)
-///     ro <u32> STATUS = 0x4000_0004; 
+///     ro <u32> STATUS = 0x4000_0004;
 /// }
 /// ```
 ///
@@ -204,7 +204,7 @@ macro_rules! volatile {
 /// # How it works
 /// - For entries with `<type>`, the macro assumes the initialization value is a memory address (`usize`).
 /// - For entries without `<type>`, it treats the value as a pointer expression unless flagged.
-/// - The `map` block expands into a series of constant definitions where each child register 
+/// - The `map` block expands into a series of constant definitions where each child register
 ///   is calculated as `BASE_ADDR + OFFSET`.
 #[macro_export]
 macro_rules! volatile_table {
@@ -311,10 +311,10 @@ macro_rules! volatile_table {
     [ ] => [];
 }
 
-/// **Internal use only.** 
+/// **Internal use only.**
 ///
 /// This macro handles the expansion of the `map` block within [`volatile_table!`].
-/// It recursively processes register definitions and calculates their absolute 
+/// It recursively processes register definitions and calculates their absolute
 /// addresses based on a base pointer using byte offsets.
 #[doc(hidden)]
 #[macro_export]

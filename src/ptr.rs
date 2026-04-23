@@ -1,6 +1,6 @@
 //! Type-safe volatile pointer implementation.
 //!
-//! [`VolatilePtr`] is a transparent wrapper around a raw pointer that uses 
+//! [`VolatilePtr`] is a transparent wrapper around a raw pointer that uses
 //! type-state patterns to enforce access rights at compile time.
 
 use crate::access::{RO, RW, VolatilePtrAccess, WO};
@@ -35,18 +35,45 @@ impl<T> VolatilePtr<RW, T> {
     }
 
     /// Performs a volatile read.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it performs a raw pointer dereference.
+    /// The caller must ensure that:
+    /// - The pointer is aligned for type `T`.
+    /// - The pointer is valid for reads and points to initialized memory (or a valid MMIO register).
+    /// - No other thread is performing a non-volatile write to this memory location simultaneously.
     #[inline]
     pub unsafe fn read(&self) -> T {
         unsafe { ptr::read_volatile(self.address) }
     }
 
     /// Performs a volatile write.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it performs a raw pointer dereference.
+    /// The caller must ensure that:
+    /// - The pointer is aligned for type `T`.
+    /// - The pointer is valid for writes.
+    /// - The memory address is mapped and accessible by the process/core.
     #[inline]
     pub unsafe fn write(&self, value: T) {
         unsafe { ptr::write_volatile(self.address, value) }
     }
 
     /// Modifies the value using a closure (Read-Modify-Write).
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it performs raw pointer dereferences.
+    /// The caller must ensure the same safety requirements as for [`Self::read`] and [`Self::write`].
+    ///
+    /// # Important: Non-atomicity
+    ///
+    /// This operation is **not atomic**. It performs a separate read and a separate write.
+    /// In a multi-threaded environment or in the presence of interrupts that modify the same
+    /// register, a race condition may occur between the read and the write.
     #[inline]
     pub unsafe fn set(&self, set_fn: impl FnOnce(T) -> T) {
         unsafe {
@@ -63,20 +90,36 @@ impl<T> VolatilePtr<RW, T> {
     }
 
     /// Calculates an offset from the pointer using typed arithmetic.
-    /// 
+    ///
     /// The offset is multiplied by `size_of::<T>()`.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the resulting pointer is within the bounds
+    /// of the same allocated object or a valid memory-mapped region.
     #[inline]
     pub const unsafe fn add(&self, count: usize) -> Self {
         Self::from_ptr(unsafe { self.get_address().add(count) })
     }
 
     /// Calculates a byte-based offset from the pointer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the resulting pointer is within the bounds
+    /// of the same allocated object or a valid memory-mapped region.
     #[inline]
     pub const unsafe fn byte_add(&self, count: usize) -> Self {
         Self::from_ptr(unsafe { self.get_address().byte_add(count) })
     }
 
     /// Calculates a byte-based offset using wrapping arithmetic.
+    ///
+    /// # Safety
+    ///
+    /// While this method uses wrapping arithmetic, the caller is responsible
+    /// for ensuring that the resulting address points to a valid memory location
+    /// before performing any read or write operations.
     #[inline]
     pub const unsafe fn raw_byte_add(&self, count: usize) -> Self {
         let ptr = self.get_address() as *mut u8;
@@ -85,6 +128,12 @@ impl<T> VolatilePtr<RW, T> {
     }
 
     /// Spins until the register matches the expected value.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the address is valid for volatile reads.
+    /// This is a busy-wait loop; it is the caller's responsibility to ensure
+    /// the condition will eventually be met to avoid a permanent hang.
     #[inline]
     pub unsafe fn wait_until(&self, value: T, mut spin_hint: impl FnMut())
     where
@@ -106,12 +155,26 @@ where
     // RW
 
     /// Sets bits using a bitwise mask (`v | mask`).
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it performs raw pointer dereferences.
+    /// The caller must ensure the same safety requirements as for [`Self::read`] and [`Self::write`].
+    ///
+    /// Note that this is a non-atomic Read-Modify-Write operation.
     #[inline]
     pub unsafe fn set_bits(&self, mask: T) {
         unsafe { self.set(|v| v | mask) };
     }
 
     /// Clears bits using a bitwise mask (`v & !mask`).
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it performs raw pointer dereferences.
+    /// The caller must ensure the same safety requirements as for [`Self::read`] and [`Self::write`].
+    ///
+    /// Note that this is a non-atomic Read-Modify-Write operation.
     #[inline]
     pub unsafe fn clear_bits(&self, mask: T) {
         unsafe { self.set(|v| v & !mask) };
@@ -127,6 +190,14 @@ impl<T> VolatilePtr<RO, T> {
     }
 
     /// Performs a volatile read.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it performs a raw pointer dereference.
+    /// The caller must ensure that:
+    /// - The pointer is aligned for type `T`.
+    /// - The pointer is valid for reads and points to initialized memory (or a valid MMIO register).
+    /// - No other thread is performing a non-volatile write to this memory location simultaneously.
     #[inline]
     pub unsafe fn read(&self) -> T {
         unsafe { ptr::read_volatile(self.address) }
@@ -139,20 +210,36 @@ impl<T> VolatilePtr<RO, T> {
     }
 
     /// Calculates an offset from the pointer using typed arithmetic.
-    /// 
+    ///
     /// The offset is multiplied by `size_of::<T>()`.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the resulting pointer is within the bounds
+    /// of the same allocated object or a valid memory-mapped region.
     #[inline]
     pub const unsafe fn add(&self, count: usize) -> Self {
         Self::from_ptr(unsafe { self.get_address().add(count) })
     }
 
     /// Calculates a byte-based offset from the pointer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the resulting pointer is within the bounds
+    /// of the same allocated object or a valid memory-mapped region.
     #[inline]
     pub const unsafe fn byte_add(&self, count: usize) -> Self {
         Self::from_ptr(unsafe { self.get_address().byte_add(count) })
     }
 
     /// Calculates a byte-based offset using wrapping arithmetic.
+    ///
+    /// # Safety
+    ///
+    /// While this method uses wrapping arithmetic, the caller is responsible
+    /// for ensuring that the resulting address points to a valid memory location
+    /// before performing any read or write operations.
     #[inline]
     pub const unsafe fn raw_byte_add(&self, count: usize) -> Self {
         let ptr = self.get_address() as *mut u8;
@@ -161,6 +248,12 @@ impl<T> VolatilePtr<RO, T> {
     }
 
     /// Spins until the register matches the expected value.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the address is valid for volatile reads.
+    /// This is a busy-wait loop; it is the caller's responsibility to ensure
+    /// the condition will eventually be met to avoid a permanent hang.
     #[inline]
     pub unsafe fn wait_until(&self, value: T, mut spin_hint: impl FnMut())
     where
@@ -181,6 +274,14 @@ impl<T> VolatilePtr<WO, T> {
     }
 
     /// Performs a volatile write.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it performs a raw pointer dereference.
+    /// The caller must ensure that:
+    /// - The pointer is aligned for type `T`.
+    /// - The pointer is valid for writes.
+    /// - The memory address is mapped and accessible by the process/core.
     #[inline]
     pub unsafe fn write(&self, value: T) {
         unsafe { ptr::write_volatile(self.address, value) }
@@ -193,20 +294,36 @@ impl<T> VolatilePtr<WO, T> {
     }
 
     /// Calculates an offset from the pointer using typed arithmetic.
-    /// 
+    ///
     /// The offset is multiplied by `size_of::<T>()`.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the resulting pointer is within the bounds
+    /// of the same allocated object or a valid memory-mapped region.
     #[inline]
     pub const unsafe fn add(&self, count: usize) -> Self {
         Self::from_ptr(unsafe { self.get_address().add(count) })
     }
 
     /// Calculates a byte-based offset from the pointer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the resulting pointer is within the bounds
+    /// of the same allocated object or a valid memory-mapped region.
     #[inline]
     pub const unsafe fn byte_add(&self, count: usize) -> Self {
         Self::from_ptr(unsafe { self.get_address().byte_add(count) })
     }
 
     /// Calculates a byte-based offset using wrapping arithmetic.
+    ///
+    /// # Safety
+    ///
+    /// While this method uses wrapping arithmetic, the caller is responsible
+    /// for ensuring that the resulting address points to a valid memory location
+    /// before performing any read or write operations.
     #[inline]
     pub const unsafe fn raw_byte_add(&self, count: usize) -> Self {
         let ptr = self.get_address() as *mut u8;
@@ -223,7 +340,7 @@ where
     #[inline]
     pub const fn from_ptr(address: A::TPtr) -> Self {
         Self {
-            address: address,
+            address,
             _access_marker: PhantomData,
             _type_marker: PhantomData,
         }

@@ -1,8 +1,7 @@
-
 #[test]
 fn test_volatile_table_macro() {
     use volatile_table::volatile_table;
-    
+
     static mut V: usize = 0usize;
     unsafe {
         V = 10usize;
